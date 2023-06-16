@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Anaphora Detection & Resolution</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
+    <style>
+        body {
+            font-family: 'Roboto';font-size: 22px;
+        }
+        .container {
+            max-width: 1000px;
+        }
+
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Anaphora Detection & Resolution</h1>
+
+    <div class="row">
+        <a href="#">Input Senstence</a> |
+        <a href="#">Words Tokens</a> |
+        <a href="#">Sentence After Removal of Stop Words</a> |
+        <a href="#">Parts of Speech Tagging</a> |
+        <a href="#">List of Nouns</a> |
+        <a href="#">List of Pronouns</a> |
+        <a href="#">Anaphora Detection</a> |
+        <a href="#">Machine Learning Algorithm Prediction</a> |
+        <a href="#">Anaphora Resolution</a>
+    </div>
+    <br />
+    <div class="panel-group">
+        <div class="panel panel-primary">
+            <div class="panel-heading">Input Sentence</div>
+            <div class="panel-body">{{input_sentence}}</div>
+        </div>
+        <div class="panel panel-primary">
+            <div class="panel-heading">Words Tokens</div>
+            <div class="panel-body">{{word_tokens}}</div>
+        </div>
+        <div class="panel panel-primary">
+            <div class="panel-heading">Sentence After Removal of Stop Words</div>
+            <div class="panel-body">{{filtered_sentence}}</div>
+        </div>
+        <div class="panel panel-primary">
+            <div class="panel-heading">Parts of Speech Tagging</div>
+            <div class="panel-body">{{pos_tagged}}</div>
+        </div>
+        <div class="panel panel-primary">
+            <div class="panel-heading">List of Nouns</div>
+            <div class="panel-body">{{nouns}}</div>
+        </div>
+        <div class="panel panel-primary">
+            <div class="panel-heading">List of Pronouns</div>
+            <div class="panel-body">{{pronouns}}</div>
+        </div>
+        <div class="panel panel-primary">
+            <div class="panel-heading">Anaphora Detection</div>
+            <div class="panel-body">
+                Anaphora is detected. Following pronoun(s) are suspected: {{pronouns}}
+            </div>
+        </div>
+        <div class="panel panel-primary">
+            <div class="panel-heading">Machine Learning Algorithm Prediction</div>
+            <div class="panel-body">
+                Machine Learning algorithm predicted following resolution: {{predicted_nouns}}
+            </div>
+        </div>
+        <div class="panel panel-primary">
+            <div class="panel-heading">Anaphora Resolution - Resolved Sentence</div>
+            <div class="panel-body">
+                {{resolved_sentence}}
+            </div>
+        </div>
+    </div>
+    <br>
+    {% for error in errors %}
+    <h4>{{ error }}</h4>
+    {% endfor %}
+</div>
+<script src="//code.jquery.com/jquery-2.2.1.min.js"></script>
+<script src="//netdna.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+</body>
+</html>
