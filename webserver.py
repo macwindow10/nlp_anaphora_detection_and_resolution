@@ -1,10 +1,14 @@
-from flask import Flask, render_template
+import io
+import random
+from flask import Flask, render_template, Response
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
-from main import remove_stop_words
+from main import remove_stop_words, words_similarity_matrix
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 nltk.download('stopwords')
 nltk.download('punkt')
@@ -102,6 +106,24 @@ def index():
                            pronouns=pronouns,
                            predicted_nouns=predicted_nouns,
                            resolved_sentence=resolved_sentence)
+
+
+@app.route('/plot_words_similarity_matrix.png')
+def plot_words_similarity_matrix_png():
+    # fig = create_figure()
+    fig = words_similarity_matrix(["Coca_Cola", "Pepsi", "pepsi", "cola", "Microsoft"])
+    output = io.BytesIO()
+    FigureCanvas(fig).print_png(output)
+    return Response(output.getvalue(), mimetype='image/png')
+
+
+def create_figure():
+    fig = Figure()
+    axis = fig.add_subplot(1, 1, 1)
+    xs = range(100)
+    ys = [random.randint(1, 50) for x in xs]
+    axis.plot(xs, ys)
+    return fig
 
 
 # main driver function
