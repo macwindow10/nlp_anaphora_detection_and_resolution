@@ -13,6 +13,7 @@
             max-width: 1000px;
         }
 
+
     </style>
 </head>
 <body>
@@ -30,7 +31,7 @@
         <a href="#">Machine Learning Algorithm Prediction</a> |
         <a href="#">Anaphora Resolution</a>
     </div>
-    <br />
+    <br/>
     <h3 style="color: red">Developed By: Zobia Sultan</h3>
     <div class="panel-group">
         <div class="panel panel-primary">
@@ -58,9 +59,27 @@
             <div class="panel-body">{{pronouns}}</div>
         </div>
         <div class="panel panel-primary">
+            <div class="panel-heading">Features Extraction</div>
+            <div class="panel-body">
+                <img src="/features_extraction_tree.png/1"
+                     alt="features extraction tree"
+                     style="width: 800px; height: 500px">
+                <img src="/features_extraction_tree.png/2"
+                     alt="features extraction tree"
+                     style="width: 800px; height: 500px">
+                <img src="/features_extraction_tree.png/3"
+                     alt="features extraction tree"
+                     style="width: 800px; height: 500px">
+                <img src="/features_extraction_tree.png/4"
+                     alt="features extraction tree"
+                     style="width: 800px; height: 500px">
+            </div>
+        </div>
+        <div class="panel panel-primary">
             <div class="panel-heading">Anaphora Detection</div>
             <div class="panel-body">
-                Anaphora is detected. Following pronoun(s) are suspected: {{pronouns}}
+                Anaphora is detected. Following pronoun(s) are suspected:
+                <mark style="background-color: green; color: white;">{{pronouns}}</mark>
             </div>
         </div>
         <div class="panel panel-primary">
@@ -72,7 +91,7 @@
         <div class="panel panel-primary">
             <div class="panel-heading">Anaphora Resolution - Resolved Sentence</div>
             <div class="panel-body">
-                {{resolved_sentence}}
+                {{resolved_sentence | safe}}
             </div>
         </div>
         <div class="panel panel-primary">

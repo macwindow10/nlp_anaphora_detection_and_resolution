@@ -1,7 +1,7 @@
 import os
 import io
 import random
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, send_file
 import nltk
 from nltk import Tree
 from nltk.draw.util import CanvasFrame
@@ -11,6 +11,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
+import matplotlib
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import numpy as np
@@ -24,25 +25,20 @@ from spacy import displacy
 import visualise_spacy_tree
 from spacy import displacy
 
+matplotlib.use('Agg')
+
 nltk.download('stopwords')
 nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
 
-spacyNlp = spacy.load('en_core_web_sm')
-doc1 = spacyNlp('My sister has a dog. She loves him.')
-# displacy.serve(doc1, style="dep")
-
-
 # load w2v from pre-built Google data
 w2v = models.word2vec.Word2Vec()
-
-
 # download bin.gz from: https://code.google.com/archive/p/word2vec/
-# w2v = models.KeyedVectors.load_word2vec_format(
-#    "D:\\pythonprojects\\GoogleNews-vectors-negative300\\GoogleNews-vectors-negative300.bin",
-#    binary=True)
-# w2v_vocab = set(w2v.index_to_key)
-# print("Loaded {} words in vocabulary".format(len(w2v_vocab)))
+w2v = models.KeyedVectors.load_word2vec_format(
+    "D:\\pythonprojects\\GoogleNews-vectors-negative300\\GoogleNews-vectors-negative300.bin",
+    binary=True)
+w2v_vocab = set(w2v.index_to_key)
+print("Loaded {} words in vocabulary".format(len(w2v_vocab)))
 
 
 def remove_stop_words(word_tokens, stop_words):
@@ -80,6 +76,41 @@ def words_similarity_matrix(nouns):
     return f
 
 
+def generate_features_extraction_trees(input_sentence):
+    sentences = input_sentence.split('.')
+    c = 1
+    for sentence in sentences:
+        if len(sentence) < 10:
+            continue
+        print('sentence: ', sentence)
+        sentence_word_tokens = word_tokenize(sentence)
+        sentence_pos_tagged = nltk.pos_tag(sentence_word_tokens)
+        # print(f'sentence pos tagged: {sentence_pos_tagged}')
+        # Extract all parts of speech from any text
+        chunker = RegexpParser("""
+                                   NP: {<DT>?<JJ>*<NN>}
+                                   P: {<IN>}           
+                                   V: {<V.*>}          
+                                   PP: {<p> <NP>}          
+                                   VP: {<V> <NP|PP>*}
+                                   """)
+        output = chunker.parse(sentence_pos_tagged)
+        output_str = str(output)
+        # print("After Extracting\n", output_str)
+        cf = CanvasFrame()
+        t = Tree.fromstring(output_str)
+        tc = TreeWidget(cf.canvas(), t)
+        cf.add_widget(tc, 10, 10)  # (10,10) offsets
+        cf.print_to_file('tree_{}.ps'.format(c))
+        # cf.destroy()
+        # output.draw()
+        # os.system("gswin64c -sDEVICE=pdfwrite -o tree.pdf tree.ps")
+        os.system(
+            "gswin64c -dBATCH -dEPSCrop -dEPSFitPage -sDEVICE=png16m -r300  -dNOPAUSE -o tree_{}.png tree_{}.ps".format(
+                c, c))
+        c = c + 1
+
+
 # Flask constructor takes the name of
 # current module (__name__) as argument.
 app = Flask(__name__)
@@ -92,38 +123,19 @@ def index():
                      "This will help to ensure that document can be created quickly and efficiently." \
                      " It should also provide access to a range of fonts and formatting options. "
 
+    generate_features_extraction_trees(input_sentence)
+
     stop_words = set(stopwords.words('english'))
-    print(f'stop_words: {stop_words}')
+    # print(f'stop_words: {stop_words}')
 
     word_tokens = word_tokenize(input_sentence)
-    print(f'word_tokens: {word_tokens}')
+    # print(f'word_tokens: {word_tokens}')
 
     filtered_sentence = remove_stop_words(word_tokens, stop_words)
-    print(f'filtered_sentence: {filtered_sentence}')
+    # print(f'filtered_sentence: {filtered_sentence}')
 
     pos_tagged = nltk.pos_tag(filtered_sentence)
-    print(f'pos_tagged: {pos_tagged}')
-
-    # Extract all parts of speech from any text
-    chunker = RegexpParser("""
-                           NP: {<DT>?<JJ>*<NN>}
-                           P: {<IN>}           
-                           V: {<V.*>}          
-                           PP: {<p> <NP>}          
-                           VP: {<V> <NP|PP>*}
-                           """)
-    # Print all parts of speech in above sentence
-    output = chunker.parse(pos_tagged)
-    output_str = str(output)
-    print("After Extracting\n", output_str)
-    cf = CanvasFrame()
-    t = Tree.fromstring(output_str)
-    tc = TreeWidget(cf.canvas(), t)
-    cf.add_widget(tc, 10, 10)  # (10,10) offsets
-    cf.print_to_file('tree.ps')
-    cf.destroy()
-    # output.draw()
-    os.system("gswin64c -sDEVICE=pdfwrite -o tree.pdf tree.ps")
+    # print(f'pos_tagged: {pos_tagged}')
 
     pronouns = []
     nouns = []
@@ -178,7 +190,9 @@ def index():
         words = sentence.split(' ')
         for word in words:
             if word.strip().capitalize() in pronouns:
-                resolved_sentence = resolved_sentence + ' ' + predicted_nouns[0]
+                resolved_sentence = resolved_sentence + \
+                                    ' <mark style="background-color: yellow; color: black;">' + \
+                                    predicted_nouns[0] + '</mark>'
             else:
                 resolved_sentence = resolved_sentence + ' ' + word.strip()
         resolved_sentence = resolved_sentence + '\r\n'
@@ -193,6 +207,11 @@ def index():
                            pronouns=pronouns,
                            predicted_nouns=predicted_nouns,
                            resolved_sentence=resolved_sentence)
+
+
+@app.route('/features_extraction_tree.png/<id>', methods=['GET'])
+def features_extraction_tree_png(id):
+    return send_file("tree_{}.png".format(id), mimetype='image/gif')
 
 
 @app.route('/plot_words_similarity_matrix.png/<nouns>', methods=['GET'])
