@@ -3,16 +3,15 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
-import numpy as np
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import pprint
 from gensim import models
+import numpy as np
+from sklearn.manifold import TSNE
 
-nltk.download('stopwords')
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
 
 # load w2v from pre-built Google data
 w2v = models.word2vec.Word2Vec()
@@ -23,39 +22,55 @@ w2v = models.KeyedVectors.load_word2vec_format(
 w2v_vocab = set(w2v.index_to_key)
 print("Loaded {} words in vocabulary".format(len(w2v_vocab)))
 
+raw_words_of_interest = ['Coke', 'Pepsi', 'cola', 'drink',
+                         'cool', 'swim', 'swimming', 'thirst',
+                         'Microsoft', 'Oracle',
+                         'smartphone', 'cruise']
+# some other random stuff we chould throw in...
+#                    'King', 'Queen', 'person', 'walking', 'dancing', 'news', 'food', 'kitchen', 'house']
 
-def remove_stop_words(word_tokens, stop_words):
-    filtered_sentence = []
-    for w in word_tokens:
-        if w not in stop_words:
-            filtered_sentence.append(w)
-    return filtered_sentence
+words_of_interest = []
+for woi in raw_words_of_interest:
+    for word, _ in w2v.most_similar(woi):
+        words_of_interest.append(word)
 
+words_of_interest = list(set(words_of_interest))
 
-def words_similarity_matrix(nouns):
-    words = ["Coca_Cola", "Pepsi", "pepsi", "cola", "Microsoft", "Samsung", "Apple", "Google"]
-    words = nouns
-    similarities = np.zeros((len(words), len(words)), dtype=np.float_)
-    for idx1, word1 in enumerate(words):
-        for idx2, word2 in enumerate(words):
-            # note KeyError is possible if word doesn't exist
-            sim = w2v.similarity(word1, word2)
-            similarities[idx1, idx2] = sim
+vectors = []
+for word in set(words_of_interest):
+    vectors.append(w2v[word])
 
-    df = pd.DataFrame.from_records(similarities, columns=words)
-    df.index = words
+vectors = np.vstack(vectors)  # turn vectors into a 2D array <words x 300dim>
 
-    f, ax = plt.subplots(1, 1, figsize=(10, 6))
-    cmap = plt.cm.Blues
-    mask = np.zeros_like(df)
-    mask[np.triu_indices_from(mask)] = True
-    sns.heatmap(df, cmap=cmap, mask=mask, square=True, ax=ax)
-    _ = plt.yticks(rotation=90)
-    plt.xlabel('Words')
-    _ = plt.xticks(rotation=45)
-    _ = plt.title("Similarities between words")
-    plt.show()
-    return f
+model = TSNE(n_components=2, random_state=0)
+X_tsne = model.fit_transform(vectors)
+df_after_tsne = pd.DataFrame.from_records(X_tsne, columns=['x', 'y'])
+df_after_tsne['labels'] = words_of_interest
+
+# calculate similarity from a target word to all words, to use as our colour
+target_word = "smartphone"
+similarities = []
+for woi in words_of_interest:
+    similarity = min(max(0, w2v.similarity(target_word, woi)), 1.0)
+    similarities.append(similarity)
+
+# plot the T-SNE layout for words, darker words means more similar to our target
+plt.figure(figsize=(12, 8))
+plt.xlim((min(X_tsne[:, 0]), max(X_tsne[:, 0])))
+plt.ylim((min(X_tsne[:, 1]), max(X_tsne[:, 1])))
+for idx in range(X_tsne.shape[0]):
+    x, y = X_tsne[idx]
+    label = words_of_interest[idx]
+    color = str(min(0.6, 1.0 - similarities[idx]))  # convert to string "0.0".."1.0" as greyscale for mpl
+    # plt.annotate(s=label, xy=(x, y), color=color)
+    # plt.annotate(s=label, xy=(x, y), weight=int(similarities[idx]*1000)) # use weight
+
+plt.tight_layout()
+_ = plt.title("Word similarity (T-SNE) using vectors from {} words\nColoured by similarity to '{}'".format(
+        len(words_of_interest),
+        target_word))
+plt.show()
+
 '''
 if __name__ == '__main__':
     example_1 = "The system must provide a user-friendly interface for creating and editing documents. Users should " \

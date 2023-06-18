@@ -1,18 +1,84 @@
+import os
 import io
 import random
 from flask import Flask, render_template, Response
 import nltk
+from nltk import Tree
+from nltk.draw.util import CanvasFrame
+from nltk.draw import TreeWidget
+from nltk import pos_tag, word_tokenize, RegexpParser
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
-from main import remove_stop_words, words_similarity_matrix
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+from PIL import Image
+from gensim import models
+import spacy
+from spacy import displacy
+import visualise_spacy_tree
+from spacy import displacy
 
 nltk.download('stopwords')
 nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
+
+spacyNlp = spacy.load('en_core_web_sm')
+doc1 = spacyNlp('My sister has a dog. She loves him.')
+# displacy.serve(doc1, style="dep")
+
+
+# load w2v from pre-built Google data
+w2v = models.word2vec.Word2Vec()
+
+
+# download bin.gz from: https://code.google.com/archive/p/word2vec/
+# w2v = models.KeyedVectors.load_word2vec_format(
+#    "D:\\pythonprojects\\GoogleNews-vectors-negative300\\GoogleNews-vectors-negative300.bin",
+#    binary=True)
+# w2v_vocab = set(w2v.index_to_key)
+# print("Loaded {} words in vocabulary".format(len(w2v_vocab)))
+
+
+def remove_stop_words(word_tokens, stop_words):
+    filtered_sentence = []
+    for w in word_tokens:
+        if w not in stop_words:
+            filtered_sentence.append(w)
+    return filtered_sentence
+
+
+def words_similarity_matrix(nouns):
+    words = nouns
+    similarities = np.zeros((len(words), len(words)), dtype=np.float_)
+    for idx1, word1 in enumerate(words):
+        for idx2, word2 in enumerate(words):
+            # note KeyError is possible if word doesn't exist
+            # print('word1: ', word1);
+            # print('word2: ', word2);
+            sim = w2v.similarity(word1, word2)
+            similarities[idx1, idx2] = sim
+
+    df = pd.DataFrame.from_records(similarities, columns=words)
+    df.index = words
+
+    f, ax = plt.subplots(1, 1, figsize=(10, 6))
+    cmap = plt.cm.Blues
+    mask = np.zeros_like(df)
+    mask[np.triu_indices_from(mask)] = True
+    sns.heatmap(df, cmap=cmap, mask=mask, square=True, ax=ax)
+    _ = plt.yticks(rotation=90)
+    plt.xlabel('Words')
+    _ = plt.xticks(rotation=45)
+    _ = plt.title("Similarities between words")
+    # plt.show()
+    return f
+
 
 # Flask constructor takes the name of
 # current module (__name__) as argument.
@@ -37,6 +103,27 @@ def index():
 
     pos_tagged = nltk.pos_tag(filtered_sentence)
     print(f'pos_tagged: {pos_tagged}')
+
+    # Extract all parts of speech from any text
+    chunker = RegexpParser("""
+                           NP: {<DT>?<JJ>*<NN>}
+                           P: {<IN>}           
+                           V: {<V.*>}          
+                           PP: {<p> <NP>}          
+                           VP: {<V> <NP|PP>*}
+                           """)
+    # Print all parts of speech in above sentence
+    output = chunker.parse(pos_tagged)
+    output_str = str(output)
+    print("After Extracting\n", output_str)
+    cf = CanvasFrame()
+    t = Tree.fromstring(output_str)
+    tc = TreeWidget(cf.canvas(), t)
+    cf.add_widget(tc, 10, 10)  # (10,10) offsets
+    cf.print_to_file('tree.ps')
+    cf.destroy()
+    # output.draw()
+    os.system("gswin64c -sDEVICE=pdfwrite -o tree.pdf tree.ps")
 
     pronouns = []
     nouns = []
@@ -108,10 +195,17 @@ def index():
                            resolved_sentence=resolved_sentence)
 
 
-@app.route('/plot_words_similarity_matrix.png')
-def plot_words_similarity_matrix_png():
+@app.route('/plot_words_similarity_matrix.png/<nouns>', methods=['GET'])
+def plot_words_similarity_matrix_png(nouns):
     # fig = create_figure()
-    fig = words_similarity_matrix(["Coca_Cola", "Pepsi", "pepsi", "cola", "Microsoft"])
+    print('nouns: ', nouns)
+    list = nouns.replace("[", "") \
+        .replace("]", "") \
+        .replace("'", "") \
+        .replace(" ", "") \
+        .split(",")
+    print('list: ', list)
+    fig = words_similarity_matrix(list)
     output = io.BytesIO()
     FigureCanvas(fig).print_png(output)
     return Response(output.getvalue(), mimetype='image/png')
