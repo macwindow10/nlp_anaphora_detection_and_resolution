@@ -192,7 +192,7 @@ def index():
             if word.strip().capitalize() in pronouns:
                 resolved_sentence = resolved_sentence + \
                                     ' <mark style="background-color: yellow; color: black;">' + \
-                                    predicted_nouns[0] + '</mark>'
+                                    str(predicted_nouns[0]).capitalize() + '</mark>'
             else:
                 resolved_sentence = resolved_sentence + ' ' + word.strip()
         resolved_sentence = resolved_sentence + '\r\n'
